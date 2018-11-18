@@ -1,5 +1,4 @@
-# gwr-tb
-GWR Toolbox
+# gwr-tb :: GWR Toolbox
 #
 This repository contains 2 types of extensions of the Grow-When-Required (GWR) self-organizing neural network by Marsland et al. (2002).
 
@@ -8,10 +7,10 @@ Use **demo** files for off-the-shelf functionalities with the Iris dataset.
 You can create, train, test, plot, import and export GWR networks.
 
 ----------------------------------------------------------
-**Associative GWR** (AGWR; Parisi et al., 2015) - Standard GWR extended with associative labelling
+**Associative GWR** (AGWR; Parisi et al., 2015) - Standard GWR extended with associative labelling.
 
 ----------------------------------------------------------
-**GammaGWR** (Parisi et al., 2017) - GWR neurons with temporal descriptors
+**GammaGWR** (Parisi et al., 2017) - GWR with temporal context (Gamma memory).
 
 ----------------------------------------------------------
 References:
