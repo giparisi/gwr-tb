@@ -11,7 +11,7 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 
-def import_network(file_name, NetworkClass) -> np.ndarray:
+def import_network(file_name, NetworkClass):
     """ Import pickled network from file
     """
     file = open(file_name, 'br')

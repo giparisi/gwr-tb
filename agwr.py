@@ -45,7 +45,7 @@ class AssociativeGWR:
         self.locked = False
 
     def find_bmus(self, input_vector, **kwargs):
-        second_best = kwargs.get('second_best', None)
+        second_best = kwargs.get('second_best', False)
         distances = np.zeros(self.num_nodes)
         for i in range(0, self.num_nodes):
             distances[i] = self.compute_distance(self.weights[i], input_vector, self.dis_metric)
@@ -67,7 +67,7 @@ class AssociativeGWR:
         self.num_nodes += 1
 
     def habituate_node(self, index, tau, **kwargs):
-        new_node = kwargs.get('new_node', None)
+        new_node = kwargs.get('new_node', False)
         if not new_node:
             self.habn[index] += (tau * 1.05 * (1. - self.habn[index]) - tau)
         else:
@@ -86,7 +86,7 @@ class AssociativeGWR:
         self.weights[index] = self.weights[index] + delta
         
     def update_labels(self, bmu, label, **kwargs):
-        new_node = kwargs.get('new_node', None)        
+        new_node = kwargs.get('new_node', False)        
         if not new_node:        
             for a in range(0, self.num_classes):
                 if (a==label):
@@ -103,9 +103,9 @@ class AssociativeGWR:
             self.alabels = np.concatenate((self.alabels, new_alabel), axis=0)
 
     def update_edges(self, fi, si, **kwargs):
-        new_index = kwargs.get('new_index', None)
+        new_index = kwargs.get('new_index', False)
         self.ages += 1
-        if new_index is None:
+        if not new_index:
             self.edges[fi, si] = 1  
             self.edges[si, fi] = 1
             self.ages[fi, si] = 0
