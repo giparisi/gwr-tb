@@ -190,7 +190,7 @@ class AssociativeGWR:
         self.a_dec = 0.1
   
         # Start training
-        errorCounter = np.zeros(self.max_epochs)
+        error_counter = np.zeros(self.max_epochs)
         for epoch in range(0, self.max_epochs):
             for iteration in range(0, self.samples):
                 
@@ -202,7 +202,7 @@ class AssociativeGWR:
                 b_index, b_distance, s_index = self.find_bmus(input, second_best=True)
                 
                 # Quantization error
-                errorCounter[epoch] += b_distance
+                error_counter[epoch] += b_distance
                 
                 # Compute network activity
                 a = math.exp(-b_distance)
@@ -245,9 +245,9 @@ class AssociativeGWR:
             self.remove_old_edges()
 
             # Average quantization error (AQE)
-            errorCounter[epoch] /= self.samples
+            error_counter[epoch] /= self.samples
             
-            print ("(Epoch: %s, NN: %s, AQE: %s)" % (epoch+1, self.num_nodes, errorCounter[epoch]))
+            print ("(Epoch: %s, NN: %s, AQE: %s)" % (epoch+1, self.num_nodes, error_counter[epoch]))
             
         # Remove isolated neurons
         self.remove_isolated_nodes()
