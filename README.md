@@ -13,7 +13,12 @@ You can create, train, test, plot, import and export GWR networks.
 **GammaGWR** (Parisi et al., 2017) - GWR with temporal context (Gamma memory).
 
 ----------------------------------------------------------
+**Episodic GWR** (Parisi et al., 2018) - GWR with temporal context, temporal connections, and task-relavant learning modulation.
+
+----------------------------------------------------------
 References:
++ [Parisi et al., 2018] Parisi, G.I., Tani, J., Weber, C., Wermter, S. (2017) Lifelong Learning of Spatiotemporal Representations with Dual-Memory Recurrent Self-Organization. Frontiers in Neurorobotics, in press.
+
 + [Parisi et al., 2017] Parisi, G.I., Tani, J., Weber, C., Wermter, S. (2017) Lifelong Learning of Human Actions with Deep Neural Network Self-Organization. Neural Networks, 96:137-149.
 
 + [Parisi et al., 2015] Parisi, G.I., Weber, C., Wermter, S. (2015) Self-Organizing Neural Integration of Pose-Motion Features for Human Action Recognition. Frontiers in Neurorobotics, 9(3).
