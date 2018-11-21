@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 gwr-tb :: Associative GWR based on Marsland et al. (2002)'s Grow-When-Required network
-@last-modified: 17 November 2018
+@last-modified: 20 November 2018
 @author: German I. Parisi (german.parisi@gmail.com)
 
 """
@@ -89,7 +89,7 @@ class AssociativeGWR:
         new_node = kwargs.get('new_node', False)        
         if not new_node:        
             for a in range(0, self.num_classes):
-                if (a==label):
+                if a==label:
                     self.alabels[bmu, a] += self.a_inc
                 else:
                     if label != -1:
@@ -172,7 +172,9 @@ class AssociativeGWR:
         
         assert not self.locked, "Network is locked. Unlock to train."
          
-        self.samples, self.dimension = ds.vectors.shape
+        self.samples = ds.vectors.shape[0]
+        assert ds.vectors.shape[1] == self.dimension, "Wrong dimensionality"
+        
         self.max_epochs = epochs
         self.a_threshold = a_threshold   
         self.epsilon_b, self.epsilon_n = learning_rates

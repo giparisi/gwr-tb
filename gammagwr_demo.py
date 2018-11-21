@@ -33,7 +33,7 @@ if __name__ == "__main__":
         my_net = gtls.import_network(file_name, GammaGWR)
 
     if train_flag:
-       my_net = GammaGWR(ds=ds_iris, random=False, num_context=2)
+       my_net = GammaGWR(ds=ds_iris, random=False, num_context=1)
        my_net.train_agwr(ds_iris, epochs=15, a_threshold=0.85, beta=0.7,
                          learning_rates=[0.2, 0.001])
 

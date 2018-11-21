@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 gwr-tb :: Gamma-GWR based on Marsland et al. (2002)'s Grow-When-Required network
-@last-modified: 17 November 2018
+@last-modified: 20 November 2018
 @author: German I. Parisi (german.parisi@gmail.com)
 
 """
@@ -74,8 +74,7 @@ class GammaGWR:
     def compute_distance(self, x, y):
         return np.linalg.norm(np.dot(self.alphas.T, (x-y)))
 
-    def add_node(self, b_index, input_vector):
-        new_weight = np.zeros((self.depth, self.dimension))        
+    def add_node(self, b_index):      
         new_weight = np.array([np.dot(self.weights[b_index] + self.g_context, self.new_node)])        
         self.weights = np.concatenate((self.weights, new_weight), axis=0)
         self.num_nodes += 1
@@ -105,7 +104,7 @@ class GammaGWR:
         new_node = kwargs.get('new_node', False)        
         if not new_node:        
             for a in range(0, self.num_classes):
-                if (a==label):
+                if a == label:
                     self.alabels[bmu, a] += self.a_inc
                 else:
                     if label != -1:
@@ -187,8 +186,10 @@ class GammaGWR:
     def train_agwr(self, ds, epochs, a_threshold, beta, learning_rates):
         
         assert not self.locked, "Network is locked. Unlock to train."
-         
-        self.samples, self.dimension = ds.vectors.shape
+
+        self.samples = ds.vectors.shape[0]
+        assert ds.vectors.shape[1] == self.dimension, "Wrong dimensionality"
+        
         self.max_epochs = epochs
         self.a_threshold = a_threshold   
         self.epsilon_b, self.epsilon_n = learning_rates
@@ -237,7 +238,7 @@ class GammaGWR:
                    
                     # Add new neuron
                     n_index = self.num_nodes
-                    self.add_node(b_index, input)                  
+                    self.add_node(b_index)         
                    
                     # Add label histogram
                     self.update_labels(n_index, label, new_node=True)                   
