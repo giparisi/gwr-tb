@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-gwr-tb :: Gamma-GWR based on Marsland et al. (2002)'s Grow-When-Required network
+gwr-tb :: Episodic-GWR
 @last-modified: 20 November 2018
 @author: German I. Parisi (german.parisi@gmail.com)
 
