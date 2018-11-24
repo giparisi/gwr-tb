@@ -18,7 +18,7 @@ if __name__ == "__main__":
     import_flag = False
     # Train AGWR with imported dataset    
     train_flag = True
-    train_type = 1 # 0:Batch, 1: Incremental
+    train_type = 0 # Batch, 1: Incremental
     # Compute classification accuracy    
     test_flag = True
     # Export pickled network to file       
@@ -53,7 +53,7 @@ if __name__ == "__main__":
         
         num_context = 0 # number of context descriptors
         
-        epochs = 1 # epochs per sample for incremental learning
+        epochs = 15 # epochs per sample for incremental learning
         a_threshold = 0.85
         beta = 0.7
         learning_rates = [0.2, 0.001]
@@ -79,7 +79,7 @@ if __name__ == "__main__":
             gtls.export_network(file_name, my_net)
 
         if test_flag:
-            my_net.test_gammagwr(ds_vectors, ds_labels, test_accuracy=True)
+            my_net.test(ds_vectors, ds_labels, test_accuracy=True)
             print("Accuracy on test-set: %s" % my_net.test_accuracy)
 
     if plot_flag:

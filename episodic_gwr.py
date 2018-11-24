@@ -142,7 +142,7 @@ class EpisodicGWR(GammaGWR):
                 
                 b_label = np.argmax(self.alabels[0][b_index])
                 
-                misclassified = b_label != label
+                misclassified = b_label != label[0]
                 
                 # Quantization error
                 error_counter[epoch] += b_distance
@@ -215,10 +215,12 @@ class EpisodicGWR(GammaGWR):
         
         print("Network size: %s" % self.num_nodes)
 
-    def test_gammagwr(self, ds_vectors, ds_labels, **kwargs):
-        test_accuracy = kwargs.get('test_accuracy', None)
+    def test(self, ds_vectors, ds_labels, **kwargs):
+        test_accuracy = kwargs.get('test_accuracy', False)
+        test_vecs = kwargs.get('ret_vecs', False)
         test_samples = ds_vectors.shape[0]
         self.bmus_index = -np.ones(test_samples)
+        self.bmus_weight = np.zeros((test_samples, self.dimension))
         self.bmus_label = -np.ones((len(self.num_labels), test_samples))
         self.bmus_activation = np.zeros(test_samples)
         
@@ -232,13 +234,13 @@ class EpisodicGWR(GammaGWR):
             # Find the BMU
             b_index, b_distance = super().find_bmus(input_context)
             self.bmus_index[i] = b_index
+            self.bmus_weight[i] = self.weights[b_index, 0]
             self.bmus_activation[i] = math.exp(-b_distance)
             for l in range(0, len(self.num_labels)):
-                self.bmus_label[l] = np.argmax(self.alabels[l][b_index])
+                self.bmus_label[l, i] = np.argmax(self.alabels[l][b_index])
             
             for j in range(1, self.depth):
                 input_context[j] = input_context[j-1]
-            
             
             if test_accuracy:
                 for l in range(0, len(self.num_labels)):
@@ -247,3 +249,8 @@ class EpisodicGWR(GammaGWR):
 
         if test_accuracy:
             self.test_accuracy =  acc_counter / ds_vectors.shape[0]
+            
+        if test_vecs:
+            s_labels = -np.ones((1, test_samples))
+            s_labels[0] = self.bmus_label[1]
+            return self.bmus_weight, s_labels
