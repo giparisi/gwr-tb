@@ -27,9 +27,6 @@ if __name__ == "__main__":
     plot_flag = False
     
     if data_flag:
-        #ds_core50 = CORe50()
-        #ds_core50.loadData()
-        #print ("%s loaded." % ds_core50.name)
         ds_iris = gtls.IrisDataset(file='iris.csv', normalize=True)
         print("%s from %s loaded." % (ds_iris.name, ds_iris.file))
 
