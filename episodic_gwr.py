@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 gwr-tb :: Episodic-GWR
-@last-modified: 20 November 2018
+@last-modified: 23 November 2018
 @author: German I. Parisi (german.parisi@gmail.com)
 
 """
@@ -12,7 +12,7 @@ from gammagwr import GammaGWR
 
 class EpisodicGWR(GammaGWR):
     
-    def __init__(self, ds, **kwargs):
+    def __init__(self, ds, e_labels, num_context):
 
         if ds is not None:
             # Number of neurons
@@ -20,7 +20,7 @@ class EpisodicGWR(GammaGWR):
             # Dimensionality of weights
             self.dimension = ds.vectors.shape[1]
             # Start with two neurons with context
-            self.num_context = kwargs.get('num_context', 0)
+            self.num_context = num_context
             self.depth = self.num_context + 1
             self.weights = np.zeros((self.num_nodes, self.depth, self.dimension))
             # Global context
@@ -34,13 +34,13 @@ class EpisodicGWR(GammaGWR):
             # Age matrix
             self.ages = np.zeros((self.num_nodes, self.num_nodes))
             # Label histogram
-            self.num_classes = ds.num_classes
-            self.alabels = np.zeros((self.num_nodes, ds.num_classes))
-            
+            self.num_labels = e_labels
+            self.alabels = []
+            for l in range(0, len(self.num_labels)):
+                self.alabels.append(-np.ones((self.num_nodes, self.num_labels[l])))
             init_ind = list(range(0, self.num_nodes))
             for i in range(0, len(init_ind)):
                 self.weights[i, 0] = ds.vectors[i]
-                self.alabels[i, int(ds.labels[i])] = 1
                 
             # Context coefficients
             self.alphas = self.compute_alphas(self.depth)
@@ -55,14 +55,35 @@ class EpisodicGWR(GammaGWR):
         if previous_ind != -1 and previous_ind != current_ind:
             self.temporal[previous_ind, current_ind] += 1
 
+    def update_labels(self, bmu, label, **kwargs):
+        new_node = kwargs.get('new_node', False)        
+        if not new_node:
+            for l in range(0, len(self.num_labels)):
+                for a in range(0, self.num_labels[l]):
+                    if a == label[l]:
+                        self.alabels[l][bmu, a] += self.a_inc
+                    else:
+                        if label[l] != -1:
+                            self.alabels[l][bmu, a] -= self.a_dec
+                            if (self.alabels[l][bmu, a] < 0):
+                                self.alabels[l][bmu, a] = 0              
+        else:
+            for l in range(0, len(self.num_labels)):
+                new_alabel = np.zeros((1, self.num_labels[l]))
+                if label[l] != -1:
+                    new_alabel[0, int(label[l])] = self.a_inc
+                self.alabels[l] = np.concatenate((self.alabels[l], new_alabel), axis=0)
+
     def remove_isolated_nodes(self):
         ind_c = 0
         rem_c = 0
         while (ind_c < self.num_nodes):
-            neighbours = np.nonzero(self.edges[ind_c])
+            neighbours = np.nonzero(self.edges[ind_c])            
             if len(neighbours[0]) < 1:
                 self.weights = np.delete(self.weights, ind_c, axis=0)
-                self.alabels = np.delete(self.alabels, ind_c, axis=0)
+                for d in range(0, len(self.num_labels)):
+                    d_labels = self.alabels[d]
+                    self.alabels[d] = np.delete(d_labels, ind_c, axis=0)
                 self.edges = np.delete(self.edges, ind_c, axis=0)
                 self.edges = np.delete(self.edges, ind_c, axis=1)
                 self.ages = np.delete(self.ages, ind_c, axis=0)
@@ -95,7 +116,7 @@ class EpisodicGWR(GammaGWR):
         self.tau_n = 0.1
         self.max_nodes = self.samples # OK for batch, bad for incremental
         self.max_neighbors = 6
-        self.max_age = 6000
+        self.max_age = 600
         self.new_node = 0.5
         self.a_inc = 1
         self.a_dec = 0.1
@@ -110,7 +131,7 @@ class EpisodicGWR(GammaGWR):
                 
                 # Generate input sample
                 self.g_context[0] = ds_vectors[iteration]
-                label = ds_labels[iteration]
+                label = ds_labels[:,iteration]
                 
                 # Update global context
                 for z in range(1, self.depth):
@@ -119,7 +140,8 @@ class EpisodicGWR(GammaGWR):
                 # Find the best and second-best matching neurons
                 b_index, b_distance, s_index = self.find_bmus(self.g_context, second_best=True)
                 
-                b_label = np.argmax(self.alabels[b_index, :])
+                b_label = np.argmax(self.alabels[0][b_index])
+                
                 misclassified = b_label != label
                 
                 # Quantization error
@@ -140,8 +162,8 @@ class EpisodicGWR(GammaGWR):
                         n_index = self.num_nodes
                         super().add_node(b_index)
                        
-                        # Add label histogram
-                        super().update_labels(n_index, label, new_node=True)                   
+                        # Add label histogram           
+                        self.update_labels(n_index, label, new_node=True)                   
     
                         # Update edges and ages
                         super().update_edges(b_index, s_index, new_index=n_index)
@@ -165,7 +187,7 @@ class EpisodicGWR(GammaGWR):
                             n_rate *= self.mod_rate
                         else:
                             # Update BMU's label histogram
-                            super().update_labels(b_index, label)
+                            self.update_labels(b_index, label)
     
                         super().update_weight(b_index, b_rate)
     
@@ -197,13 +219,13 @@ class EpisodicGWR(GammaGWR):
         test_accuracy = kwargs.get('test_accuracy', None)
         test_samples = ds_vectors.shape[0]
         self.bmus_index = -np.ones(test_samples)
-        self.bmus_label = -np.ones(test_samples)
+        self.bmus_label = -np.ones((len(self.num_labels), test_samples))
         self.bmus_activation = np.zeros(test_samples)
         
         input_context = np.zeros((self.depth, self.dimension))
         
         if test_accuracy:
-            acc_counter = 0
+            acc_counter = np.zeros(len(self.num_labels))
         
         for i in range(0, test_samples):
             input_context[0] = ds_vectors[i]
@@ -211,14 +233,17 @@ class EpisodicGWR(GammaGWR):
             b_index, b_distance = super().find_bmus(input_context)
             self.bmus_index[i] = b_index
             self.bmus_activation[i] = math.exp(-b_distance)
-            self.bmus_label[i] = np.argmax(self.alabels[b_index])
+            for l in range(0, len(self.num_labels)):
+                self.bmus_label[l] = np.argmax(self.alabels[l][b_index])
             
             for j in range(1, self.depth):
                 input_context[j] = input_context[j-1]
             
+            
             if test_accuracy:
-                if self.bmus_label[i] == ds_labels[i]:
-                    acc_counter += 1
+                for l in range(0, len(self.num_labels)):
+                    if self.bmus_label[l, i] == ds_labels[l, i]:
+                        acc_counter[l] += 1
 
         if test_accuracy:
             self.test_accuracy =  acc_counter / ds_vectors.shape[0]
