@@ -1,54 +1,57 @@
 # -*- coding: utf-8 -*-
 """
 gwr-tb :: Gamma-GWR based on Marsland et al. (2002)'s Grow-When-Required network
-@last-modified: 20 November 2018
+@last-modified: 30 November 2018
 @author: German I. Parisi (german.parisi@gmail.com)
 
 """
 
 import numpy as np
 import math
+from heapq import nsmallest
 
 class GammaGWR:
+
+    def __init__(self):
+        self.iterations = 0
     
-    def __init__(self, ds, random, **kwargs):
-
-        if ds is not None:
-            # Number of neurons
-            self.num_nodes = 2
-            # Dimensionality of weights
-            self.dimension = ds.vectors.shape[1]
-            # Start with two neurons with context
-            self.num_context = kwargs.get('num_context', 0)
-            self.depth = self.num_context + 1
-            self.weights = np.zeros((self.num_nodes, self.depth, self.dimension))
-            # Global context
-            self.g_context = np.zeros((self.depth, self.dimension))                        
-            # Habituation counters
-            self.habn = np.ones(self.num_nodes)
-            # Connectivity matrix
-            self.edges = np.ones((self.num_nodes, self.num_nodes))
-            # Age matrix
-            self.ages = np.zeros((self.num_nodes, self.num_nodes))
-            # Label histogram
-            self.alabels = np.zeros((self.num_nodes, ds.num_classes))
-            # Initialize weights
-            self.random = random
-            
-            if self.random:            
-                init_ind = np.random.randint(0, ds.vectors.shape[0], 2)
-            else:
-                init_ind = list(range(0, self.num_nodes))
-
-            for i in range(0, len(init_ind)):
-                self.weights[i, 0] = ds.vectors[i]
-                self.alabels[i, int(ds.labels[i])] = 1
-                
-            # Context coefficients
-            self.alphas = self.compute_alphas(self.depth)
-            
+    def init_network(self, ds, random, **kwargs) -> None:
+        assert self.iterations < 1, "Can't initialize a trained network"
+        assert ds is not None, "Need a dataset to initialize a network"
         # Keep unlocked to train. Lock to prevent training.
         self.locked = False
+        # Number of neurons
+        self.num_nodes = 2
+        # Dimensionality of weights
+        self.dimension = ds.vectors.shape[1]
+        # Start with two neurons with context
+        self.num_context = kwargs.get('num_context', 0)
+        self.depth = self.num_context + 1
+        self.weights = np.zeros((self.num_nodes, self.depth, self.dimension))
+        # Global context
+        self.g_context = np.zeros((self.depth, self.dimension))                        
+        # Habituation counters
+        self.habn = np.ones(self.num_nodes)
+        # Connectivity matrix
+        self.edges = np.ones((self.num_nodes, self.num_nodes))
+        # Age matrix
+        self.ages = np.zeros((self.num_nodes, self.num_nodes))
+        # Label histogram
+        self.alabels = np.zeros((self.num_nodes, ds.num_classes))
+        # Initialize weights
+        self.random = random
+        
+        if self.random:            
+            init_ind = np.random.randint(0, ds.vectors.shape[0], 2)
+        else:
+            init_ind = list(range(0, self.num_nodes))
+
+        for i in range(0, len(init_ind)):
+            self.weights[i, 0] = ds.vectors[i]
+            self.alabels[i, int(ds.labels[i])] = 1
+            
+        # Context coefficients
+        self.alphas = self.compute_alphas(self.depth)
         
     def compute_alphas(self, num_coeff):
         alpha_w = np.zeros(num_coeff)
@@ -58,11 +61,10 @@ class GammaGWR:
         return alpha_w
 
     def find_bmus(self, input_vector, **kwargs):
-        second_best = kwargs.get('second_best', False)
+        second_best = kwargs.get('s_best', False)
         distances = np.zeros(self.num_nodes)
         for i in range(0, self.num_nodes):
-            distances[i] = self.compute_distance(self.weights[i], input_vector)
-        
+            distances[i] = self.compute_distance(self.weights[i], input_vector)        
         if second_best:
             # Compute best and second-best matching units
             return self.find_bs(distances)
@@ -75,7 +77,8 @@ class GammaGWR:
         return np.linalg.norm(np.dot(self.alphas.T, (x-y)))
 
     def add_node(self, b_index):      
-        new_weight = np.array([np.dot(self.weights[b_index] + self.g_context, self.new_node)])        
+        new_weight = np.array([np.dot(self.weights[b_index] + self.g_context, 
+                                      self.new_node)])        
         self.weights = np.concatenate((self.weights, new_weight), axis=0)
         self.num_nodes += 1
 
@@ -97,7 +100,8 @@ class GammaGWR:
     def update_weight(self, index, epsilon):
         delta = np.zeros((self.depth, self.dimension))
         for i in range(0, self.depth):
-            delta[i] = np.array([np.dot((self.g_context[i]-self.weights[index,i]), epsilon)]) * self.habn[index]
+            delta[i] = np.array([np.dot((self.g_context[i]-self.weights[index,i]),
+                                        epsilon)]) * self.habn[index]
         self.weights[index] += delta
         
     def update_labels(self, bmu, label, **kwargs):
@@ -164,35 +168,19 @@ class GammaGWR:
                 ind_c += 1
         print ("(-- Removed %s neuron(s))" % rem_c)
 
-    def find_bs(self, dis):
-        if dis[0] < dis[1]:
-            b_index = 0
-            s_index = 1
-        else:
-            b_index = 1
-            s_index = 0
-    
-        for i in range(2, self.num_nodes):
-            if dis[i] < dis[s_index]:
-                if dis[i] < dis[b_index]:
-                    s_index = b_index
-                    b_index = i
-                else:
-                    if i != b_index:
-                        s_index = i
-
-        return b_index, dis[b_index], s_index
+    def find_bs(self, dis) -> (int, float, int):
+        bs = nsmallest(2, ((k, i) for i, k in enumerate(dis)))
+        return bs[0][1], bs[0][0], bs[1][1]
                 
-    def train_agwr(self, ds, epochs, a_threshold, beta, learning_rates):
+    def train_ggwr(self, ds, epochs, a_threshold, beta, l_rates):
         
         assert not self.locked, "Network is locked. Unlock to train."
-
         self.samples = ds.vectors.shape[0]
         assert ds.vectors.shape[1] == self.dimension, "Wrong dimensionality"
         
         self.max_epochs = epochs
         self.a_threshold = a_threshold   
-        self.epsilon_b, self.epsilon_n = learning_rates
+        self.epsilon_b, self.epsilon_n = l_rates
         self.beta = beta
         
         self.hab_threshold = 0.1
@@ -221,7 +209,7 @@ class GammaGWR:
                     self.g_context[z] = (self.beta * previous_bmu[z]) + ((1-self.beta) * previous_bmu[z-1])
                 
                 # Find the best and second-best matching neurons
-                b_index, b_distance, s_index = self.find_bmus(self.g_context, second_best=True)
+                b_index, b_distance, s_index = self.find_bmus(self.g_context, s_best=True)
                 
                 # Quantization error
                 error_counter[epoch] += b_distance
@@ -250,7 +238,6 @@ class GammaGWR:
                     self.habituate_node(n_index, self.tau_b, new_node=True)
                     
                 else:
-
                     # Habituate BMU
                     self.habituate_node(b_index, self.tau_b)
 
@@ -265,6 +252,8 @@ class GammaGWR:
                     
                     # Update BMU's label histogram
                     self.update_labels(b_index, label)
+                    
+                self.iterations += 1
 
             # Remove old edges
             self.remove_old_edges()
@@ -272,12 +261,11 @@ class GammaGWR:
             # Average quantization error (AQE)
             error_counter[epoch] /= self.samples
             
-            print ("(Epoch: %s, NN: %s, ATQE: %s)" % (epoch+1, self.num_nodes, error_counter[epoch]))
+            print ("(Epoch: %s, NN: %s, ATQE: %s)" % 
+                   (epoch+1, self.num_nodes, error_counter[epoch]))
             
         # Remove isolated neurons
         self.remove_isolated_nodes()
-        
-        print("Network size: %s" % self.num_nodes)
 
     def test_gammagwr(self, test_ds, **kwargs):
         test_accuracy = kwargs.get('test_accuracy', None)

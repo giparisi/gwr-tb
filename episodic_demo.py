@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 gwr-tb :: Growing Episodic Memory demo
-@last-modified: 23 November 2018
+@last-modified: 30 November 2018
 @author: German I. Parisi (german.parisi@gmail.com)
 
 """
@@ -14,14 +14,14 @@ if __name__ == "__main__":
 
     # Import dataset from file
     data_flag = True
-    # Import pickled network from fileflag=
+    # Import pickled network
     import_flag = False
     # Train AGWR with imported dataset    
     train_flag = True
-    train_type = 0 # Batch, 1: Incremental
+    train_type = 1 # Batch, 1: Incremental
     # Compute classification accuracy    
     test_flag = True
-    # Export pickled network to file       
+    # Export pickled network      
     export_flag = False    
     # Plot network (2D projection)
     plot_flag = False
@@ -31,8 +31,8 @@ if __name__ == "__main__":
         print("%s from %s loaded." % (ds_iris.name, ds_iris.file))
 
     if import_flag:
-        file_name = 'my_gwr.egwr'
-        my_net = gtls.import_network(file_name, EpisodicGWR)
+        fname = 'my_gwr.egwr'
+        my_net = gtls.import_network(fname, EpisodicGWR)
 
     if train_flag:
         
@@ -53,14 +53,15 @@ if __name__ == "__main__":
         
         num_context = 0 # number of context descriptors
         
-        epochs = 15 # epochs per sample for incremental learning
+        epochs = 1 # epochs per sample for incremental learning
         a_threshold = 0.85
         beta = 0.7
         learning_rates = [0.2, 0.001]
         context = True
         regulated = False
         
-        my_net = EpisodicGWR(ds_iris, e_labels, num_context)
+        my_net = EpisodicGWR()
+        my_net.init_network(ds_iris, e_labels, num_context)
         
         if train_type == 0:
             # Batch training
@@ -75,8 +76,8 @@ if __name__ == "__main__":
                                   regulated)
                                   
         if export_flag:
-            file_name = 'my_gwr.egwr'
-            gtls.export_network(file_name, my_net)
+            fname = 'my_gwr.egwr'
+            gtls.export_network(fname, my_net)
 
         if test_flag:
             my_net.test(ds_vectors, ds_labels, test_accuracy=True)

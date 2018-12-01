@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-gwr-tb :: Associative GWR based on Marsland et al. (2002)'s Grow-When-Required network
-@last-modified: 20 November 2018
+gwr-tb :: Associative GWR based on Marsland et al. (2002)'s
+          Grow-When-Required network
+@last-modified: 30 November 2018
 @author: German I. Parisi (german.parisi@gmail.com)
 
 """
@@ -9,46 +10,50 @@ gwr-tb :: Associative GWR based on Marsland et al. (2002)'s Grow-When-Required n
 import scipy.spatial
 import numpy as np
 import math
+from heapq import nsmallest
 
 class AssociativeGWR:
     
-    def __init__(self, ds, random):
-
-        if ds is not None:
-            # Number of neurons
-            self.num_nodes = 2
-            # Dimensionality of weights
-            self.dimension = ds.vectors.shape[1]
-            # Start with two neurons
-            self.weights = np.zeros((self.num_nodes, self.dimension))
-            # Habituation counters
-            self.habn = np.ones(self.num_nodes)
-            # Connectivity matrix
-            self.edges = np.ones((self.num_nodes, self.num_nodes))
-            # Age matrix
-            self.ages = np.zeros((self.num_nodes, self.num_nodes))
-            # Label histogram
-            self.alabels = np.zeros((self.num_nodes, ds.num_classes))
-            # Initialize weights
-            self.random = random
-            
-            if self.random:            
-                init_ind = np.random.randint(0, ds.vectors.shape[0], 2)
-            else:
-                init_ind = list(range(0, self.num_nodes))
-
-            for i in range(0, len(init_ind)):           
-                self.weights[i] = ds.vectors[init_ind[i]]
-                self.alabels[i, int(ds.labels[i])] = 1
-            
+    def __init__(self):
+        self.iterations = 0
+    
+    def init_network(self, ds, random) -> None:
+        assert self.iterations < 1, "Can't initialize a trained network"
+        assert ds is not None, "Need a dataset to initialize a network"
         # Keep unlocked to train. Lock to prevent training.
         self.locked = False
+        # Number of neurons
+        self.num_nodes = 2
+        # Dimensionality of weights
+        self.dimension = ds.vectors.shape[1]
+        # Start with two neurons
+        self.weights = np.zeros((self.num_nodes, self.dimension))
+        # Habituation counters
+        self.habn = np.ones(self.num_nodes)
+        # Connectivity matrix
+        self.edges = np.ones((self.num_nodes, self.num_nodes))
+        # Age matrix
+        self.ages = np.zeros((self.num_nodes, self.num_nodes))
+        # Label histogram
+        self.alabels = np.zeros((self.num_nodes, ds.num_classes))
+        # Initialize weights
+        self.random = random
+        
+        if self.random:
+            init_ind = np.random.randint(0, ds.vectors.shape[0], 2)
+        else:
+            init_ind = list(range(0, self.num_nodes))
+
+        for i in range(0, len(init_ind)):           
+            self.weights[i] = ds.vectors[init_ind[i]]
+            self.alabels[i, int(ds.labels[i])] = 1
 
     def find_bmus(self, input_vector, **kwargs):
-        second_best = kwargs.get('second_best', False)
+        second_best = kwargs.get('s_best', False)
         distances = np.zeros(self.num_nodes)
         for i in range(0, self.num_nodes):
-            distances[i] = self.compute_distance(self.weights[i], input_vector, self.dis_metric)
+            distances[i] = self.compute_distance(self.weights[i], 
+                                                 input_vector, self.dis_metric)
         
         if second_best:
             # Compute best and second-best matching units
@@ -58,15 +63,16 @@ class AssociativeGWR:
             b_distance = distances[b_index]
             return b_index, b_distance
 
-    def compute_distance(self, x, y, m):
+    def compute_distance(self, x, y, m) -> float:
         return np.linalg.norm(x-y) if m else scipy.spatial.distance.cosine(x, y)
 
-    def add_node(self, b_index, input_vector):
-        new_weight = np.array([np.dot(self.weights[b_index] + input_vector, self.new_node)])
+    def add_node(self, b_index, input_vector) -> None:
+        new_weight = np.array([np.dot(self.weights[b_index] + input_vector,
+                                      self.new_node)])
         self.weights = np.concatenate((self.weights, new_weight), axis=0)
         self.num_nodes += 1
 
-    def habituate_node(self, index, tau, **kwargs):
+    def habituate_node(self, index, tau, **kwargs) -> None:
         new_node = kwargs.get('new_node', False)
         if not new_node:
             self.habn[index] += (tau * 1.05 * (1. - self.habn[index]) - tau)
@@ -74,18 +80,19 @@ class AssociativeGWR:
             self.habn.resize(self.num_nodes) 
             self.habn[index] = 1
             
-    def update_neighbors(self, input, index, epsilon):
+    def update_neighbors(self, input, index, epsilon) -> None:
         b_neighbors = np.nonzero(self.edges[index])
         for z in range(0, len(b_neighbors[0])):
             neIndex = b_neighbors[0][z]
             self.update_weight(input, neIndex, epsilon)                        
             self.habituate_node(neIndex, self.tau_n, new_node=False)
  
-    def update_weight(self, input, index, epsilon):                        
-        delta = np.array([np.dot((input-self.weights[index]), epsilon)]) * self.habn[index]
+    def update_weight(self, input, index, epsilon) -> None:                      
+        delta = np.array([np.dot((input-self.weights[index]), 
+                                  epsilon)]) * self.habn[index]
         self.weights[index] = self.weights[index] + delta
         
-    def update_labels(self, bmu, label, **kwargs):
+    def update_labels(self, bmu, label, **kwargs) -> None:
         new_node = kwargs.get('new_node', False)        
         if not new_node:        
             for a in range(0, self.num_classes):
@@ -102,7 +109,7 @@ class AssociativeGWR:
                 new_alabel[0, int(label)] = self.a_inc
             self.alabels = np.concatenate((self.alabels, new_alabel), axis=0)
 
-    def update_edges(self, fi, si, **kwargs):
+    def update_edges(self, fi, si, **kwargs) -> None:
         new_index = kwargs.get('new_index', False)
         self.ages += 1
         if not new_index:
@@ -120,7 +127,7 @@ class AssociativeGWR:
             self.edges[fi, new_index] = 1
             self.edges[new_index, si] = 1
       
-    def remove_old_edges(self):
+    def remove_old_edges(self) -> None:
         for i in range(0, self.num_nodes):
             neighbours = np.nonzero(self.edges[i])
             for j in neighbours[0]:
@@ -130,7 +137,7 @@ class AssociativeGWR:
                     self.ages[i, j] = 0
                     self.ages[j, i] = 0
                               
-    def remove_isolated_nodes(self):
+    def remove_isolated_nodes(self) -> None:
         ind_c = 0
         rem_c = 0
         while (ind_c < self.num_nodes):
@@ -149,35 +156,20 @@ class AssociativeGWR:
                 ind_c += 1
         print ("(-- Removed %s neuron(s))" % rem_c)
  
-    def find_bs(self, dis):
-        if dis[0] < dis[1]:
-            b_index = 0
-            s_index = 1
-        else:
-            b_index = 1
-            s_index = 0
-    
-        for i in range(2, self.num_nodes):
-            if dis[i] < dis[s_index]:
-                if dis[i] < dis[b_index]:
-                    s_index = b_index
-                    b_index = i
-                else:
-                    if i != b_index:
-                        s_index = i
-
-        return b_index, dis[b_index], s_index
+    def find_bs(self, dis) -> (int, float, int):
+        bs = nsmallest(2, ((k, i) for i, k in enumerate(dis)))
+        return bs[0][1], bs[0][0], bs[1][1]
                
-    def train_agwr(self, ds, epochs, a_threshold, learning_rates):
+    def train_agwr(self, ds, epochs, a_threshold, l_rates) -> None:
         
         assert not self.locked, "Network is locked. Unlock to train."
          
         self.samples = ds.vectors.shape[0]
-        assert ds.vectors.shape[1] == self.dimension, "Wrong dimensionality"
+        assert ds.vectors.shape[1] == self.dimension, "Wrong data dimensionality"
         
         self.max_epochs = epochs
         self.a_threshold = a_threshold   
-        self.epsilon_b, self.epsilon_n = learning_rates
+        self.epsilon_b, self.epsilon_n = l_rates
         
         self.hab_threshold = 0.1
         self.tau_b = 0.3
@@ -201,7 +193,7 @@ class AssociativeGWR:
                 label = ds.labels[iteration]
                 
                 # Find the best and second-best matching neurons
-                b_index, b_distance, s_index = self.find_bmus(input, second_best=True)
+                b_index, b_distance, s_index = self.find_bmus(input, s_best=True)
                 
                 # Quantization error
                 error_counter[epoch] += b_distance
@@ -227,7 +219,6 @@ class AssociativeGWR:
                     self.habituate_node(n_index, self.tau_b, new_node=True)
                     
                 else:
-
                     # Habituate BMU
                     self.habituate_node(b_index, self.tau_b)
 
@@ -242,6 +233,8 @@ class AssociativeGWR:
                     
                     # Update BMU's label histogram
                     self.update_labels(b_index, label)
+                    
+                self.iterations += 1
 
             # Remove old edges
             self.remove_old_edges()
@@ -249,20 +242,17 @@ class AssociativeGWR:
             # Average quantization error (AQE)
             error_counter[epoch] /= self.samples
             
-            print ("(Epoch: %s, NN: %s, AQE: %s)" % (epoch+1, self.num_nodes, error_counter[epoch]))
+            print ("(Epoch: %s, NN: %s, AQE: %s)" % 
+                   (epoch+1, self.num_nodes, error_counter[epoch]))
             
         # Remove isolated neurons
         self.remove_isolated_nodes()
-        
-        print("Network size: %s" % self.num_nodes)
 
     def test_agwr(self, test_ds) -> None:
         self.bmus_index = -np.ones(self.samples)
         self.bmus_label = -np.ones(self.samples)
         self.bmus_activation = np.zeros(self.samples)
-        
         acc_counter = 0
-        
         for i in range(0, test_ds.vectors.shape[0]):
             input = test_ds.vectors[i]
             b_index, b_distance = self.find_bmus(input)
