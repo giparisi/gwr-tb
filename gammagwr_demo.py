@@ -49,5 +49,5 @@ if __name__ == "__main__":
         gtls.export_network(fname, my_net)
 
     if plot_flag:
-        gtls.plot_gamma(my_net, edges=True, labels=True)
+        gtls.plot_network(my_net, edges=True, labels=True)
         
