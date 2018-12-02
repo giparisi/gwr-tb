@@ -150,23 +150,24 @@ class GammaGWR:
                     self.ages[j, i] = 0
                               
     def remove_isolated_nodes(self):
-        ind_c = 0
-        rem_c = 0
-        while (ind_c < self.num_nodes):
-            neighbours = np.nonzero(self.edges[ind_c])
-            if len(neighbours[0]) < 1:
-                self.weights = np.delete(self.weights, ind_c, axis=0)
-                self.alabels = np.delete(self.alabels, ind_c, axis=0)
-                self.edges = np.delete(self.edges, ind_c, axis=0)
-                self.edges = np.delete(self.edges, ind_c, axis=1)
-                self.ages = np.delete(self.ages, ind_c, axis=0)
-                self.ages = np.delete(self.ages, ind_c, axis=1)
-                self.habn = np.delete(self.habn, ind_c)
-                self.num_nodes -= 1
-                rem_c += 1
-            else:
-                ind_c += 1
-        print ("(-- Removed %s neuron(s))" % rem_c)
+        if self.num_nodes > 2:
+            ind_c = 0
+            rem_c = 0
+            while (ind_c < self.num_nodes):
+                neighbours = np.nonzero(self.edges[ind_c])
+                if len(neighbours[0]) < 1:
+                    self.weights = np.delete(self.weights, ind_c, axis=0)
+                    self.alabels = np.delete(self.alabels, ind_c, axis=0)
+                    self.edges = np.delete(self.edges, ind_c, axis=0)
+                    self.edges = np.delete(self.edges, ind_c, axis=1)
+                    self.ages = np.delete(self.ages, ind_c, axis=0)
+                    self.ages = np.delete(self.ages, ind_c, axis=1)
+                    self.habn = np.delete(self.habn, ind_c)
+                    self.num_nodes -= 1
+                    rem_c += 1
+                else:
+                    ind_c += 1
+            print ("(-- Removed %s neuron(s))" % rem_c)
 
     def find_bs(self, dis) -> (int, float, int):
         bs = nsmallest(2, ((k, i) for i, k in enumerate(dis)))

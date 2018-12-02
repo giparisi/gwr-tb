@@ -77,27 +77,30 @@ class EpisodicGWR(GammaGWR):
                 self.alabels[l] = np.concatenate((self.alabels[l], new_alabel), axis=0)
 
     def remove_isolated_nodes(self):
-        ind_c = 0
-        rem_c = 0
-        while (ind_c < self.num_nodes):
-            neighbours = np.nonzero(self.edges[ind_c])            
-            if len(neighbours[0]) < 1:
-                self.weights = np.delete(self.weights, ind_c, axis=0)
-                for d in range(0, len(self.num_labels)):
-                    d_labels = self.alabels[d]
-                    self.alabels[d] = np.delete(d_labels, ind_c, axis=0)
-                self.edges = np.delete(self.edges, ind_c, axis=0)
-                self.edges = np.delete(self.edges, ind_c, axis=1)
-                self.ages = np.delete(self.ages, ind_c, axis=0)
-                self.ages = np.delete(self.ages, ind_c, axis=1)
-                self.temporal = np.delete(self.temporal, ind_c, axis=0)
-                self.temporal = np.delete(self.temporal, ind_c, axis=1)
-                self.habn = np.delete(self.habn, ind_c)
-                self.num_nodes -= 1
-                rem_c += 1
-            else:
-                ind_c += 1
-        print ("(-- Removed %s neuron(s))" % rem_c)
+        if self.num_nodes > 2:
+            ind_c = 0
+            rem_c = 0
+            while (ind_c < self.num_nodes):
+                neighbours = np.nonzero(self.edges[ind_c])            
+                if len(neighbours[0]) < 1:
+                    if self.num_nodes > 2:
+                        self.weights = np.delete(self.weights, ind_c, axis=0)
+                        for d in range(0, len(self.num_labels)):
+                            d_labels = self.alabels[d]
+                            self.alabels[d] = np.delete(d_labels, ind_c, axis=0)
+                        self.edges = np.delete(self.edges, ind_c, axis=0)
+                        self.edges = np.delete(self.edges, ind_c, axis=1)
+                        self.ages = np.delete(self.ages, ind_c, axis=0)
+                        self.ages = np.delete(self.ages, ind_c, axis=1)
+                        self.temporal = np.delete(self.temporal, ind_c, axis=0)
+                        self.temporal = np.delete(self.temporal, ind_c, axis=1)
+                        self.habn = np.delete(self.habn, ind_c)
+                        self.num_nodes -= 1
+                        rem_c += 1
+                    else: return
+                else:
+                    ind_c += 1
+            print ("(-- Removed %s neuron(s))" % rem_c)
          
     def train_egwr(self, ds_vectors, ds_labels, epochs, a_threshold, beta, 
                    l_rates, context, regulated):
@@ -140,10 +143,10 @@ class EpisodicGWR(GammaGWR):
                     self.g_context[z] = (self.beta * previous_bmu[z]) + ((1-self.beta) * previous_bmu[z-1])
                 
                 # Find the best and second-best matching neurons
-                b_index, b_distance, s_index = self.find_bmus(self.g_context, s_best=True)
+                b_index, b_distance, s_index = super().find_bmus(self.g_context,
+                                                              s_best=True)
                 
                 b_label = np.argmax(self.alabels[0][b_index])
-                
                 misclassified = b_label != label[0]
                 
                 # Quantization error
