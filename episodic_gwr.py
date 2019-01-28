@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 gwr-tb :: Episodic-GWR
 @last-modified: 25 January 2019
@@ -59,7 +58,7 @@ class EpisodicGWR(GammaGWR):
     def update_temporal(self, current_ind, previous_ind, **kwargs) -> None:
         new_node = kwargs.get('new_node', False)
         if new_node:
-            self.temporal.resize((self.num_nodes, self.num_nodes))
+            self.temporal = super().expand_matrix(self.temporal)
         if previous_ind != -1 and previous_ind != current_ind:
             self.temporal[previous_ind, current_ind] += 1
 
